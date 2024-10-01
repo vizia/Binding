@@ -39,15 +39,15 @@ impl<I,O,F: Copy> Copy for FunctionLens<I,O,F> {
 }
 
 
-impl<O, F: Copy + Fn() -> O> Lens for FunctionLens<(), O, F> {
-    type Input = ();
-    type Output = O;
-    fn view(&self, _input: &()) -> O {
-        (self.f)()
-    }
-}
+// impl<O, F: Copy + Fn() -> O> Lens for FunctionLens<(), O, F> {
+//     type Input = ();
+//     type Output = O;
+//     fn view(&self, _input: &()) -> O {
+//         (self.f)()
+//     }
+// }
 
-impl<I: 'static, O, F: Copy + Fn(&I) -> O> Lens for FunctionLens<(I,), O, F> {
+impl<I: 'static, O, F: Copy + Fn(&I) -> O> Lens for FunctionLens<I, O, F> {
     type Input = I;
     type Output = O;
     fn view(&self, input: &I) -> O {
@@ -62,20 +62,20 @@ pub trait IntoLensT<Input, Output> {
     fn into_lens(self) -> Self::Lens;
 }
 
-impl<O, F: Copy + Fn() -> O> IntoLensT<(), O> for F {
-    type Lens = FunctionLens<(), O, Self>;
+// impl<O, F: Copy + Fn() -> O> IntoLensT<(), O> for F {
+//     type Lens = FunctionLens<(), O, Self>;
 
-    fn into_lens(self) -> Self::Lens {
-        FunctionLens {
-            f: self,
-            i: Default::default(),
-            o: Default::default(),
-        }
-    }
-}
+//     fn into_lens(self) -> Self::Lens {
+//         FunctionLens {
+//             f: self,
+//             i: Default::default(),
+//             o: Default::default(),
+//         }
+//     }
+// }
 
-impl<I: 'static, O, F: Copy + Fn(&I) -> O> IntoLensT<(I,), O> for F {
-    type Lens = FunctionLens<(I,), O, Self>;
+impl<I: 'static, O, F: Copy + Fn(&I) -> O> IntoLensT<I, O> for F {
+    type Lens = FunctionLens<I, O, Self>;
 
     fn into_lens(self) -> Self::Lens {
         FunctionLens {
@@ -96,9 +96,12 @@ impl IntoLensT<(), f32> for f32 {
     }
 }
 
-pub trait IntoLens<L: Lens>: IntoLensT<(L::Input, ), L::Output, Lens = L> {}
 
-impl<L: Lens, T: IntoLensT<(L::Input, ), L::Output, Lens = L>> IntoLens<L> for T {}
+
+pub trait IntoLens<L: Lens>: IntoLensT<L::Input, L::Output, Lens = L> {}
+
+impl<L: Lens, T: IntoLensT<L::Input, L::Output, Lens = L>> IntoLens<L> for T {}
+
 
 
 pub trait Lens {

@@ -16,19 +16,19 @@ impl Model {
         self.other
     }
 
-    fn value(&self) -> f32 {
+    const fn value(&self) -> f32 {
         8.9
     }
 }
 
 fn test<L: Lens<Output = f32>>(cx: &Context, lens: impl IntoLens<L>) {
+    println!("{:?}", lens.into_lens().view(&cx.data));
     
-    
-    if let Some(input) = cx.data.get(&TypeId::of::<L::Input>()).and_then(|d| d.downcast_ref::<L::Input>()) {
-        println!("{:?}", lens.into_lens().view(input));
-    } else if let Some(input) = <dyn Any>::downcast_ref::<L::Input>(&()) {
-        println!("{:?}", lens.into_lens().view(input));
-    }
+    // if let Some(input) = cx.data.get(&TypeId::of::<I>()).and_then(|d| d.downcast_ref::<I>()) {
+    //     println!("{:?}", lens.into_lens().view(&cx.data));
+    // } else if let Some(input) = <dyn Any>::downcast_ref::<I>(&()) {
+    //     println!("{:?}", lens.into_lens().view(&cx.data));
+    // }
     
 }
 
@@ -38,8 +38,9 @@ impl Lens for TestLens {
     type Input = Model;
     type Output = f32;
 
-    fn view(&self, input: &Self::Input) -> Self::Output {
-        input.stuff
+    fn view(&self, resources: &HashMap<TypeId, Box<dyn Any>>) -> Self::Output {
+        let i: &Model = resources.get(&TypeId::of::<Self::Input>()).unwrap().downcast_ref().unwrap();
+        i.stuff
     }
 }
 
@@ -53,9 +54,12 @@ impl IntoLensT<Model, f32> for TestLens {
 
 const test_lens: TestLens = TestLens;
 
-const value: f32 = 3.89;
+const VALUE: f32 = 3.89;
+
 
 fn main() {
+
+
     let cx = &mut Context {
         data: HashMap::new(),
     };
@@ -66,13 +70,16 @@ fn main() {
     });
 
     test(cx, Model::stuff);
+    test(cx, Model::other);
     test(cx, |model: &Model| model.other);
     
     test(cx, 6.8f32);
-    test(cx, test_lens);
-    test(cx, value);
-    test(cx, Model::other);
+    test(cx, VALUE);
     test(cx, Model::value);
+    test(cx, test_lens);
+    
+    
+    
     
 }
 

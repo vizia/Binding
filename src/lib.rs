@@ -10,6 +10,20 @@ impl Context {
     }
 }
 
+trait LensParam {
+    type Item<'new>;
+
+    fn retrieve<'r>(resources: &'r HashMap<TypeId, Box<dyn Any>>) -> Self::Item<'r>;
+}
+
+impl<'a, T: 'static> LensParam for &'a T {
+    type Item<'new> = &'new T;
+
+    fn retrieve<'r>(resources: &'r HashMap<TypeId, Box<dyn Any>>) -> Self::Item<'r> {
+        resources.get(&TypeId::of::<T>()).unwrap().downcast_ref().unwrap()
+    }
+}
+
 pub struct ValueLens<Output> {
     o: Output,
 }
@@ -17,7 +31,7 @@ pub struct ValueLens<Output> {
 impl<O: Clone> Lens for ValueLens<O> {
     type Input = ();
     type Output = O;
-    fn view(&self, _input: &()) -> O {
+    fn view(&self, _input: &HashMap<TypeId, Box<dyn Any>>) -> O {
         self.o.clone()
     }
 }
@@ -47,11 +61,25 @@ impl<I,O,F: Copy> Copy for FunctionLens<I,O,F> {
 //     }
 // }
 
-impl<I: 'static, O, F: Copy + Fn(&I) -> O> Lens for FunctionLens<I, O, F> {
+impl<I: LensParam, O, F> Lens for FunctionLens<I, O, F> 
+where
+    for<'a, 'b> &'a F:
+        Fn(I) -> O +
+        Fn(<I as LensParam>::Item<'b>) -> O
+{
     type Input = I;
     type Output = O;
-    fn view(&self, input: &I) -> O {
-        (self.f)(input)
+    fn view(&self, resources: &HashMap<TypeId, Box<dyn Any>>) -> O {
+        fn call_inner<I,O>(
+            f: impl Fn(I) -> O,
+            _0: I,
+        ) -> O {
+            f(_0)
+        }
+
+        let _0 = I::retrieve(resources);
+        call_inner(&self.f, _0)
+
     }
 }
 
@@ -74,7 +102,12 @@ pub trait IntoLensT<Input, Output> {
 //     }
 // }
 
-impl<I: 'static, O, F: Copy + Fn(&I) -> O> IntoLensT<I, O> for F {
+impl<I: LensParam, O, F> IntoLensT<I, O> for F 
+where
+    for<'a, 'b> &'a F:
+        Fn(I) -> O +
+        Fn(<I as LensParam>::Item<'b>) -> O
+{
     type Lens = FunctionLens<I, O, Self>;
 
     fn into_lens(self) -> Self::Lens {
@@ -105,9 +138,9 @@ impl<L: Lens, T: IntoLensT<L::Input, L::Output, Lens = L>> IntoLens<L> for T {}
 
 
 pub trait Lens {
-    type Input: 'static;
+    type Input;
     type Output;
-    fn view(&self, input: &Self::Input) -> Self::Output;
+    fn view(&self, input: &HashMap<TypeId, Box<dyn Any>>) -> Self::Output;
 }
 
 // impl<O: Clone> Lens for &O {

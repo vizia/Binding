@@ -24,11 +24,12 @@ impl<'a, T: 'static> LensParam for &'a T {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct ValueLens<Output> {
     o: Output,
 }
 
-impl<O: Clone> Lens for ValueLens<O> {
+impl<O: Copy> Lens for ValueLens<O> {
     type Input = ();
     type Output = O;
     fn view(&self, _input: &HashMap<TypeId, Box<dyn Any>>) -> O {
@@ -52,20 +53,12 @@ impl<I,O,F: Copy> Copy for FunctionLens<I,O,F> {
     
 }
 
-
-// impl<O, F: Copy + Fn() -> O> Lens for FunctionLens<(), O, F> {
-//     type Input = ();
-//     type Output = O;
-//     fn view(&self, _input: &()) -> O {
-//         (self.f)()
-//     }
-// }
-
 impl<I: LensParam, O, F> Lens for FunctionLens<I, O, F> 
 where
     for<'a, 'b> &'a F:
         Fn(I) -> O +
-        Fn(<I as LensParam>::Item<'b>) -> O
+        Fn(<I as LensParam>::Item<'b>) -> O,
+    F: Copy
 {
     type Input = I;
     type Output = O;
@@ -90,23 +83,12 @@ pub trait IntoLensT<Input, Output> {
     fn into_lens(self) -> Self::Lens;
 }
 
-// impl<O, F: Copy + Fn() -> O> IntoLensT<(), O> for F {
-//     type Lens = FunctionLens<(), O, Self>;
-
-//     fn into_lens(self) -> Self::Lens {
-//         FunctionLens {
-//             f: self,
-//             i: Default::default(),
-//             o: Default::default(),
-//         }
-//     }
-// }
-
 impl<I: LensParam, O, F> IntoLensT<I, O> for F 
 where
     for<'a, 'b> &'a F:
         Fn(I) -> O +
-        Fn(<I as LensParam>::Item<'b>) -> O
+        Fn(<I as LensParam>::Item<'b>) -> O,
+    F: Copy,
 {
     type Lens = FunctionLens<I, O, Self>;
 
@@ -136,17 +118,8 @@ pub trait IntoLens<L: Lens>: IntoLensT<L::Input, L::Output, Lens = L> {}
 impl<L: Lens, T: IntoLensT<L::Input, L::Output, Lens = L>> IntoLens<L> for T {}
 
 
-
-pub trait Lens {
+pub trait Lens: Copy {
     type Input;
     type Output;
     fn view(&self, input: &HashMap<TypeId, Box<dyn Any>>) -> Self::Output;
 }
-
-// impl<O: Clone> Lens for &O {
-//     type Input = ();
-//     type Output = O;
-//     fn view(&self, _: &Self::Input) -> Self::Output {
-//         (*self).clone()
-//     }
-// }

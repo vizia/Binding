@@ -5,6 +5,7 @@ use binding::*;
 pub struct Model {
     stuff: f32,
     other: f32,
+    text: String,
 }
 
 impl Model {
@@ -16,6 +17,14 @@ impl Model {
         self.other
     }
 
+    fn text(&self) -> String {
+        self.text.clone()
+    }
+
+    fn more_text(&self) -> String {
+        "More text".to_string()
+    }
+
     const fn value(&self) -> f32 {
         8.9
     }
@@ -23,15 +32,13 @@ impl Model {
 
 fn test<L: Lens<Output = f32>>(cx: &Context, lens: impl IntoLens<L>) {
     println!("{:?}", lens.into_lens().view(&cx.data));
-    
-    // if let Some(input) = cx.data.get(&TypeId::of::<I>()).and_then(|d| d.downcast_ref::<I>()) {
-    //     println!("{:?}", lens.into_lens().view(&cx.data));
-    // } else if let Some(input) = <dyn Any>::downcast_ref::<I>(&()) {
-    //     println!("{:?}", lens.into_lens().view(&cx.data));
-    // }
-    
 }
 
+fn test_string<L: Lens<Output = String>>(cx: &Context, lens: impl IntoLens<L>) {
+    println!("{:?}", lens.into_lens().view(&cx.data));
+}
+
+#[derive(Clone, Copy)]
 pub struct TestLens;
 
 impl Lens for TestLens {
@@ -52,6 +59,7 @@ impl IntoLensT<Model, f32> for TestLens {
     }
 }
 
+#[allow(non_upper_case_globals)]
 const test_lens: TestLens = TestLens;
 
 const VALUE: f32 = 3.89;
@@ -67,6 +75,7 @@ fn main() {
     cx.add_data(Model {
         stuff: 3.14,
         other: 2.48,
+        text: "Test".to_string(),
     });
 
     test(cx, Model::stuff);
@@ -78,8 +87,8 @@ fn main() {
     test(cx, Model::value);
     test(cx, test_lens);
     
-    
-    
+    test_string(cx, Model::text);
+    test_string(cx, Model::more_text);
     
 }
 
